@@ -60,10 +60,22 @@ fn main() -> ! {
     loop {
         buffer.clear();
 
-        // TODO Receive a user request. Each user request ends with Enter
-        // NOTE 'buffer.push' returns a 'Result'. Handle the error by responding
-        // with an error message.
+        loop {
+            // We assume that the receiving cannot fail
+            let byte = nb::block!(serial.read()).unwrap();
 
-        // TODO Send back the reversed string
+            if buffer.push(byte).is_err() {
+                write!(serial, "error: buffer full\r\n").unwrap();
+                break;
+            }
+
+            if byte == 13 {
+                for byte in buffer.iter().rev().chain(&[b'\n', b'\r']) {
+                    nb::block!(serial.write(*byte)).unwrap();
+                }
+                break;
+            }
+        }
+        nb::block!(serial.flush()).unwrap();
     }
 }
